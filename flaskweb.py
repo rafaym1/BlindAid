@@ -8,7 +8,7 @@ app = Flask(__name__)
 
 @app.route("/")
 def lil():
-    return "hello"
+    return "hello this is testing "
 def generate_frames(video=0):
 
     yolo_output = video_detection(video, model1="runs/detect/train2/weights/best.pt", model2="github/model@1535470106.json", weights2="github/model@1535470106.h5", csvfile_path="rafay.csv")
