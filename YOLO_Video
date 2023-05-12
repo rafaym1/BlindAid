@@ -1,0 +1,92 @@
+from ultralytics import YOLO
+import cv2
+import pandas as pd
+
+from keras.models import model_from_json
+from sklearn.preprocessing import StandardScaler
+
+
+def video_detection(path_x, model1="../runs/detect/train2/weights/best.pt", model2 = "../github/model@1535470106.json",weights2 = "../github/model@1535470106.h5",csvfile_path = "../rafay.csv"):
+    video_capture=path_x
+    cap=cv2.VideoCapture(video_capture)
+
+    frame_width=int(cap.get(3))
+    frame_height = int(cap.get(4))
+
+    out=cv2.VideoWriter('output.avi', cv2.VideoWriter_fourcc('M', 'J', 'P', 'G'), 10, (frame_width, frame_height))
+
+    model=YOLO(model1)
+    classNames = ["person", "bicycle", "car", "motorbike", "aeroplane", "bus", "train", "truck", "boat",
+                  "traffic light", "fire hydrant", "stop sign", "parking meter", "bench", "bird", "cat",
+                  "dog", "horse", "sheep", "cow", "elephant", "bear", "zebra", "giraffe", "backpack", "umbrella",
+                  "handbag", "tie", "suitcase", "frisbee", "skis", "snowboard", "sports ball", "kite", "baseball bat",
+                  "baseball glove", "skateboard", "surfboard", "tennis racket", "bottle", "wine glass", "cup",
+                  "fork", "knife", "spoon", "bowl", "banana", "apple", "sandwich", "orange", "broccoli",
+                  "carrot", "hot dog", "pizza", "donut", "cake", "chair", "sofa", "pottedplant", "bed",
+                  "diningtable", "toilet", "tvmonitor", "laptop", "mouse", "remote", "keyboard", "cell phone",
+                  "microwave", "oven", "toaster", "sink", "refrigerator", "book", "clock", "vase", "scissors",
+                  "teddy bear", "hair drier", "toothbrush"
+                  ]
+
+    while True:
+        success, img = cap.read()
+        results=model(img,stream=True)
+        for r in results:
+            boxes=r.boxes
+            for box in boxes:
+                x1,y1,x2,y2=box.xyxy[0]
+                # print(x1, y1, x2, y2)
+                x1,y1,x2,y2=int(x1), int(y1), int(x2), int(y2)
+                print(x1,y1,x2,y2)
+                li=[x1,y1,x2,y2]
+                # print (box)
+                cv2.rectangle(img, (x1,y1), (x2,y2), (255,0,255),3)
+                #print(box.conf[0])
+                #conf=math.ceil((box.conf[0]*100))/100
+                cls=int(box.cls[0])
+                class_name=classNames[cls]
+
+                df_test = pd.read_csv(csvfile_path)
+                df_test.loc[len(df_test)] = li
+                x_test = df_test[['scaled_xmin', 'scaled_ymin', 'scaled_xmax', 'scaled_ymax']].values
+
+                # standardized data
+                scalar = StandardScaler()
+                x_test = scalar.fit_transform(x_test)
+                scalar.fit_transform((df_test[['scaled_ymax']].values - df_test[['scaled_ymin']]) / 3)
+
+                # load json and create model
+                json_file = open(model2, 'r')
+                loaded_model_json = json_file.read()
+                json_file.close()
+                loaded_model = model_from_json(loaded_model_json)
+
+                # load weights into new model
+                loaded_model.load_weights(weights2)
+                print("Loaded model from disk")
+
+                # evaluate loaded model on test data
+                loaded_model.compile(loss='mean_squared_error', optimizer='adam')
+                distance_pred = loaded_model.predict(x_test)
+
+                # scale up predictions to original values
+                distance_pred = scalar.inverse_transform(distance_pred)
+                m= str(distance_pred[-1])+class_name
+
+
+                label=f'{m}'
+                t_size = cv2.getTextSize(label, 0, fontScale=1, thickness=2)[0]
+                #print(t_size)
+                c2 = x1 + t_size[0], y1 - t_size[1] - 3
+                cv2.rectangle(img, (x1,y1), c2, [255,0,255], -1, cv2.LINE_AA)  # filled
+                cv2.putText(img, label, (x1,y1-2),0, 1,[255,255,255], thickness=1,lineType=cv2.LINE_AA)
+
+        yield img
+        # out.write(img)
+        # cv2.imshow("Image", img)
+        # if cv2.waitKey(1) & 0xFF==ord('1'):
+        #     break
+    out.release()
+
+# video_detection(path_x=0)
+cv2.destroyAllWindows()
