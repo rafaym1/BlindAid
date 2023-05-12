@@ -1,0 +1,23 @@
+header {
+  background-color: #202020;
+  color: white;
+  text-align: center;
+  padding: 20px;
+  font-size: 36px;
+  border-bottom: 4px solid #888;
+}
+
+.video-container {
+  width: 80%;
+  margin: 0 auto;
+  text-align: center;
+  border: 2px solid #ddd;
+  box-shadow: 2px 2px 10px rgba(0, 0, 0, 0.3);
+  padding: 20px;
+  background-color: #f9f9f9;
+}
+
+.video-container img {
+  max-width: 100%;
+  height: auto;
+}
